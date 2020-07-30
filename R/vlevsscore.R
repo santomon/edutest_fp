@@ -4,6 +4,11 @@
 # influences the score achieved in assessments.
 
 
+#configuration
+
+alpha_ = 0.05 #The significance level we are using
+
+
 ##libraries
 
 library("psy")
@@ -15,6 +20,7 @@ library("dplyr")
 library("Rmisc")
 library("tidyverse")
 library("reshape2")
+library(ggplot2)
 
 ## load and show data set
 #the data has generated using the pynb from this repository
@@ -35,18 +41,6 @@ class(ds)
 head(ds)
 nums <- Filter(is.numeric, ds) #only the numerical values from the dataset
 
-
-#QUERY: for which activity type is Correlation with higher score the best?
-#I guess this would mean sum_click gets higher, score gets higher, but for which resource is this the best?
-#first normalize
-ds_norm <- mutate_if(ds, is.numeric, scale)
-
-result <- ddply(ds_norm, .(activity_type), summarise, click_score = cor(Filter(is.numeric, sum_click), score,use="complete.obs", method = "pearson"))
-result
-
-#no correlation for shared subpage?
-ds_norm[ds_norm$activity_type=="sharedsubpage",]
-#only 2 entries, so let's ignore
 
 ###################################################################################################################################################################
 #QUERY: Grouped by individual students, what is the correlation between the sum of clicks to the Virtual Learning environments and the average score they received?
@@ -79,7 +73,7 @@ plot(avg_score_given_clicks)
 
 
 #To the actual question at hand
-#To understand, which types of VLEs positively influence the scores of a student best, we use a multi-linear model.
+#To understand, which types of VLEs positively influence the scores of a student best, we use a multi-linear regression model.
 #Our idea is as follows: The greater the coefficient of a VLE is, the more positive the influence of that VLE is on the score.
 #Even if the score and the usage of VLEs don't share a linear relationship, the coefficient should still be a good indicator to the overall tendency of how 
 #the VLE would influence the score, moreover compared with coefficients from the other VLEs.
@@ -98,23 +92,44 @@ stud_atype_sum_expanded <- dplyr::right_join(stud_atype_sum, stud_atype) %>% mut
 stud_atype_sum_rearranged <- dcast(stud_atype_sum_expanded, id_student~activity_type) %>% join(stud_avg_score) %>% mutate_all(funs(ifelse(is.na(.), 0, .)))
   #rearrange the table, so that the VLEs are now the columns and the student ID are the rows
 
-
-
 fit <- lm(score~ ., data=stud_atype_sum_rearranged[,2:21])
 summary(fit)
+  #The results
+
+
+lm_results <- summary(fit)$coefficients[-1,] %>%          #drop first row, which is the intercept 
+                        as.data.frame() %>%               #the result is a matrix; we turn it into a data frame for convenience
+                        arrange(-Estimate) %>%
+                        tibble::rownames_to_column("activity_type") #let the row names become the first columns, for convenience
+
+lm_results_significant <- lm_results[lm_results$`Pr(>|t|)` < alpha_, ]
+
+barplot(lm_results$Estimate, 
+        names=lm_results$activity_type, 
+        las=2,
+        main = "Slopes of all activity types",
+        col="#2DBAE3",
+        #ylim=c(-5,3),
+        cex.name=0.6
+)
+
+
+barplot(lm_results_significant$Estimate, 
+        names=lm_results_significant$activity_type, 
+        las=2,
+        main = "Slopes of activity types with p-value < 0.05",
+        col="#2DBAE3",
+        ylim=c(-1.5,1.5),
+        cex.name=0.8
+        )
+
 
 #Judging from the summary, the summary, questionnaires and pages have the best coefficients with p-values << 0.05.
 
 #On the other hand, external quizes have the most negative influence on the average score of the student, with p-value << 0.05.
-#It stands out, as it has the only significant coefficient < -1.
+#It stands out, as it has the only significant slope less than -1.
 #What this implies, is, that learning with external quizes is actually detrimental with respect to the average score achieved at one's one university.
 
 #These findings are interesting and seem very well explainable.
 #It is our theory, that external quizes may use different notations and set diferent priorities, so that the questions in the quiz have little in common
 #with what will be in the final exam. 
-
-#Questionaires having a good impact is also quite reasonable, as in such cases, a student's very individual difficulties with the topic can be efficiently solved.
-
-
-###################Known Problems##############################
-# duplicate contents ---> biases during calculations; some students took more assessments and therefore have way more entries and bias the  calculations towards themselves
