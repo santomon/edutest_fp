@@ -34,7 +34,7 @@ ds <- read.csv("../merged/merged.csv",TRUE,",") %>%
                    date_registration, 
                    date_unregistration, 
                    num_of_prev_attempts, 
-                   date, date_submitted, studied_credits, weight, is_banked,
+                   date_submitted, studied_credits, weight, is_banked,
                    gender, region, highest_education, imd_band, age_band, disability)) #drop columns that are not relevant to our question
 
 class(ds)
@@ -45,7 +45,7 @@ nums <- Filter(is.numeric, ds) #only the numerical values from the dataset
 ###################################################################################################################################################################
 #QUERY: Grouped by individual students, what is the correlation between the sum of clicks to the Virtual Learning environments and the average score they received?
 #i.e. does more VLE usage correspond with higher scores?
-stud_activity <- unique(x=ds[c('id_student', 'activity_type', 'id_site', 'sum_click')])  #there are multiple entries for each student
+stud_activity <- unique(x=ds[c('id_student', 'activity_type', 'id_site', 'sum_click', 'date')])  #there are multiple entries for each student
   #stud_activity now contains a student's the number of clicks on every VLE, where they clicked at least once, as well as the type of the VLE 
 
 
