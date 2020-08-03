@@ -3,6 +3,14 @@
 # This R code examines, how the use of various virtual learning environments (VLEs)
 # influences the score achieved in assessments.
 
+# This code expects you to have downloaded and saved the OULAD data set into ../datsets
+# and the saved merged variant, that is generated from our .pynb-file, into ../merged/
+
+
+#!!!!-----------------------------------!!!###
+#the code is designed to be run in RStudio; throughout, there will be remarks on the data
+#please refer to the respective global data frames
+
 
 #configuration
 
@@ -80,7 +88,7 @@ plot(avg_score_given_clicks)
 
 stud_atype_sum <- aggregate(x=stud_activity[c('sum_click')], by=stud_activity[c('id_student', 'activity_type')], FUN=sum, na.rm=TRUE)
   #for every student, sum all the clicks he did on VLEs, grouped by the type,
-  #e.g. for astudent: for homepage, count their clicks on all sites, that are homepages
+  #e.g. for a student: for homepage, count their clicks on all sites, that are homepages
 
 stud_atype <- expand(stud_atype_sum, id_student, activity_type) 
   #a target frame, that is the cartesian product of <student_id> and <activity_type>
@@ -124,12 +132,46 @@ barplot(lm_results_significant$Estimate,
         )
 
 
-#Judging from the summary, the summary, questionnaires and pages have the best coefficients with p-values << 0.05.
+#Judging from the summary, questionnaires and pages have the best coefficients with p-values << 0.05.
 
 #On the other hand, external quizes have the most negative influence on the average score of the student, with p-value << 0.05.
 #It stands out, as it has the only significant slope less than -1.
 #What this implies, is, that learning with external quizes is actually detrimental with respect to the average score achieved at one's one university.
 
 #These findings are interesting and seem very well explainable.
-#It is our theory, that external quizes may use different notations and set diferent priorities, so that the questions in the quiz have little in common
-#with what will be in the final exam. 
+#This would seem to support the idea, that a student should preferably use ressources provided by their own university. External quizes may use different notations and set diferent priorities, so that the questions in the quiz have little in common
+#with what will be in the final exam.
+
+#However, other possible explanations must be explored first.
+#######################################################################################################################
+##### 
+#Validation of results
+
+vle_ <- read.csv("../datasets/Vle.csv")
+assessments <- read.csv("../datasets/assessments.csv")
+
+externalquiz_vle <- vle_[vle_$activity_type == "externalquiz",]
+  #---> external quizes only exist in code module DDD
+  # low results for external quizes only, because module D is harder than the other modules?
+
+#show average score across semester for each module:
+assessment_scores <- join(stud_scores, assessments)
+assessment_avg_scores <- aggregate(x=assessment_scores['score'], by=assessment_scores['code_module'], FUN='mean', na.rm=TRUE) %>% arrange(score)
+mean(assessment_scores$score, na.rm = TRUE)
+
+#----> the negative slope of 'externalquiz' is explained by module D assessments having overall the lowest average score and external quizes
+# only being available to this module
+
+
+questionnaire_vle <- vle_[vle_$activity_type == "questionnaire",]
+page_vle <- vle_[vle_$activity_type == "page",]
+
+#---->similar explanations to the result before:
+#The questionnaire and page type appear mostly in module FFF, which has a higher average score across students that partook in it.
+
+#####################################################################################
+############
+#### =====> group the data for the linear regression for each assessment,
+#### the Vles used prior, that are part of the module
+
+### refer the second R-file for this
